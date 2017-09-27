@@ -32,10 +32,37 @@ class v2ex(object):
 
         #获取登陆网页中的用户名密码元素变量值
         user_element = bs.find('input', {'class' : 'sl', 'type':'text'})['name']
-        password_elemnt = bs.find('input', {'type' : 'password'})['name']
-        print(password_elemnt)
+        password_element = bs.find('input', {'type' : 'password'})['name']
+        once_element = bs.find('input', {'name' : 'once'})['value']
         print('user[%s]'%user_element)
-        print('password[%s]'%password_elemnt)
+        print('password[%s]'%password_element)
+        print('once[%s]'%once_element)
+
+        #构造表单数据并进行登陆
+        form_data = {
+            user_element : self.user,
+            password_element : self.password,
+            'once' : once_element,
+            'next' : '/',
+        }
+        p = self.session.post(self.url, form_data, headers = self.headers)
+
+        #根据response里是否存在'登出'字样判断用户是否已经成功登陆
+        bs = BeautifulSoup(p.content, 'lxml')
+        if bs.find(text = '登出') is None:
+            print('Login failed.')
+            return False
+        else:
+            print('Login successful.')
+            return True
+
+    #进行每日签到任务获取金币
+    def daily():
+        daily_url = "https://www.v2ex.com/mission/daily"
+
+    #获取账户余额情况
+    def balance():
+        
 
 if __name__ == '__main__':
     user = input('Please input the user name:')
@@ -43,3 +70,7 @@ if __name__ == '__main__':
 
     v = v2ex(user, password)
     result = v.login()
+    if result is True:
+        v.daily()
+    else:
+        print('V2ex daily task failed, please check the user or password.')
