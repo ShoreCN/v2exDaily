@@ -8,6 +8,8 @@ The python tool works for v2ex daily sign up.
 import getpass
 import requests
 from bs4 import BeautifulSoup
+from PIL import Image
+import pytesseract
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"
 
@@ -36,13 +38,32 @@ class v2ex(object):
         password_element = bs.find('input', {'type' : 'password'})['name']
         once_element = bs.find('input', {'name' : 'once'})['value']
 
+        #若出现验证码，通过tesseract识别，验证码图片url规则固定，加上once参数即可
+        captcha_input = bs.find('input', {'placeholder' : '请输入上图中的验证码'})
+        if captcha_input is not None:
+            print('Parse captcha...')
+            captch_page = self.session.get('https://www.v2ex.com/_captcha?once='+once_element, headers = self.headers)
+
+            if captch_page.status_code == 200:
+                print(captch_page.content)
+                with open('captcha.png', 'wb') as f:
+                    f.write(captch_page.content)
+                captch_img = Image.open('captcha.png')
+                captch_str = pytesseract.image_to_string(captch_img)
+            else:
+                print('Failed to get the captcha image.')
+
+            captcha_element = captcha_input['name']
+            print('captcha element [%s] , captcha str[%s]'%(captcha_element,captch_str))
+
         #构造表单数据并进行登陆
         form_data = {
             user_element : self.user,
             password_element : self.password,
             'once' : once_element,
             'next' : '/',
-        }
+            captcha_element : captch_str,
+        }        
         p = self.session.post(self.url, form_data, headers = self.headers)
 
         #根据response里是否存在'登出'字样判断用户是否已经成功登陆
@@ -65,7 +86,7 @@ class v2ex(object):
         #因为签到按钮链接存在变量，此处根据获取到的实际元素拼接签到任务的URL,并根据最后的页面显示判断是否成功签到
         mission_url = "https://www.v2ex.com" + daily_bs.find('input', {'class':'super normal button'})['onclick'].split("'")[1]
         res_daily = self.session.get(mission_url, headers = self.headers)
-        if BeautifulSoup(res_daily, 'lxml').find('li', {'class':'fa fa-ok-sign'}) is None:
+        if BeautifulSoup(res_daily.content, 'lxml').find('li', {'class':'fa fa-ok-sign'}) is None:
             print('Daily mission failed.')
         else:
             print('Daily mission successful.')
