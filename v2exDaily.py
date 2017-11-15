@@ -45,16 +45,18 @@ class v2ex(object):
             captch_page = self.session.get('https://www.v2ex.com/_captcha?once='+once_element, headers = self.headers)
 
             if captch_page.status_code == 200:
-                print(captch_page.content)
-                with open('captcha.png', 'wb') as f:
+                with open('captcha.jpg', 'wb') as f:
                     f.write(captch_page.content)
-                captch_img = Image.open('captcha.png')
+                captch_img = Image.open('captcha.jpg')
                 captch_str = pytesseract.image_to_string(captch_img)
             else:
                 print('Failed to get the captcha image.')
 
             captcha_element = captcha_input['name']
             print('captcha element [%s] , captcha str[%s]'%(captcha_element,captch_str))
+            captcha_by_man = input('Please input below if you want to recognize the captcha yourself, otherwise return directly:')
+            if captcha_by_man != '':
+                captch_str = captcha_by_man
 
         #构造表单数据并进行登陆
         form_data = {
@@ -81,7 +83,12 @@ class v2ex(object):
         daily_url = "https://www.v2ex.com/mission/daily"
         daily_content = self.session.get(daily_url, headers = self.headers)
         daily_bs = BeautifulSoup(daily_content.content, 'lxml')
-        print('%s' % daily_bs.find('h1').text)
+        if daily_bs.find('li', {'class':'fa fa-ok-sign'}) is None:
+            print('%s' % daily_bs.find('h1').text)
+        else:
+            print('Mission completed already.')
+            print('%s' % daily_bs.find('li', {'class':'fa fa-ok-sign'}).parent.parent.next_sibling.next_sibling.text)
+            return
 
         #因为签到按钮链接存在变量，此处根据获取到的实际元素拼接签到任务的URL,并根据最后的页面显示判断是否成功签到
         mission_url = "https://www.v2ex.com" + daily_bs.find('input', {'class':'super normal button'})['onclick'].split("'")[1]
