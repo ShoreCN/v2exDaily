@@ -1,4 +1,4 @@
-#!/bin/bah
+#!/bin/sh
 sleep 15
 while true
 do
